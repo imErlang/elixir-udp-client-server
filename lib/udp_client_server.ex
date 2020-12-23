@@ -11,28 +11,38 @@ defmodule UdpClientServer do
   end
 
   def launch_server(port) do
-    IO.puts "Launching server on localhost on port #{port}"
+    IO.puts("Launching server on localhost on port #{port}")
     server = Socket.UDP.open!(port)
     serve(server)
   end
 
   def serve(server) do
-    {data, client} = server |> Socket.Datagram.recv!
-    IO.puts "Received: #{data}, from #{inspect(client)}"
+    {data, client} = server |> Socket.Datagram.recv!()
+    IO.puts("Received: #{data}, from #{inspect(client)}")
+
+    send_data(server, data, client)
+    IO.puts("Sent: #{data}, to #{inspect(client)}")
 
     serve(server)
   end
 
   @doc """
-  Sends `data` to the `to` value, where `to` is a tuple of 
-  { host, port } like {{127, 0, 0, 1}, 1337}
+  Sends data to server and recv msg from server
   """
-  def send_data(data, to) do
-    server = Socket.UDP.open!  # Without specifying the port, we randomize it
-    Socket.Datagram.send!(server, data, to)
+  def echo(data, to) do
+    Task.async(fn ->
+      server = Socket.UDP.open!()
+      send_data(server, data, to)
+      {data, client} = server |> Socket.Datagram.recv!()
+      IO.puts("Received: #{data}, from Server #{inspect(client)}")
+    end)
   end
 
-  def send_data(data) do
-    send_data(data, {@local_host, @default_server_port})
+  @doc """
+  Sends `data` to the `to` value, where `to` is a tuple of
+  { host, port } like {{127, 0, 0, 1}, 1337}
+  """
+  def send_data(server, data, to) do
+    Socket.Datagram.send!(server, data, to)
   end
 end
